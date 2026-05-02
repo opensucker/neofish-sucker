@@ -54,7 +54,10 @@ class PlaywrightManager:
         self,
         max_tabs: int = DEFAULT_MAX_TABS,
         tab_ttl: int = DEFAULT_TAB_TTL,
+        browser_mode: str = BROWSER_MODE_HEADLESS,
     ):
+        if browser_mode not in _VALID_BROWSER_MODES:
+            raise ValueError(f"Unknown browser mode: {browser_mode}")
         self.playwright = None
         self.context: Optional[BrowserContext] = None
         self.tab_manager: Optional[TabManager] = None
@@ -78,7 +81,7 @@ class PlaywrightManager:
         self.viewport_width: int = 1280
         self.viewport_height: int = 800
 
-        self._browser_mode: str = BROWSER_MODE_HEADLESS
+        self._browser_mode: str = browser_mode
         self._mode_switch_lock: asyncio.Lock = asyncio.Lock()
 
     @property
@@ -90,6 +93,10 @@ class PlaywrightManager:
         if self.tab_manager and self._current_session_id:
             return self.tab_manager.get_active_page(self._current_session_id)
         return None
+
+    async def start(self):
+        self.playwright = await async_playwright().start()
+        await self._launch_context(headless=(self._browser_mode == BROWSER_MODE_HEADLESS))
 
     async def _launch_context(self, headless: bool) -> None:
         BROWSER_STATE_DIR.mkdir(exist_ok=True)
@@ -122,10 +129,6 @@ class PlaywrightManager:
             tab_ttl=self.tab_ttl,
         )
         await self.tab_manager.start()
-
-    async def start(self):
-        self.playwright = await async_playwright().start()
-        await self._launch_context(headless=True)
 
     async def stop(self):
         if self.tab_manager:

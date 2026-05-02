@@ -101,6 +101,19 @@ npm install
 npm run dev
 ```
 *打开浏览器访问 `http://localhost:5173` 即可开始体验！*
+
+### 6. 无前端模式（HTTP API，面向其他应用集成）
+
+如果你只想把 NeoFish 当"后端能力"嵌入别的应用（Bot、脚本、内部工单系统等），不需要前端也不需要 WebSocket，可以只启动一个纯 HTTP 接口：
+
+```bash
+uv run python run_headless.py
+```
+
+默认监听 `http://0.0.0.0:8100`，默认使用**本机有头 Chrome 窗口**（方便人工接管/扫码/登录）。一次 `POST /v1/chat` 发一句话，同步等到 Agent 结束或需要人工，两种返回状态：`completed` / `needs_input`。同一 `session_id` 可反复调用，复用浏览器上下文与会话记忆。
+
+完整协议见 [`docs/headless_api.md`](docs/headless_api.md)。
+
 ## 💡 使用场景示例
 
 你可以对 NeoFish 说出以下指令：
