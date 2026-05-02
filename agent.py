@@ -906,13 +906,57 @@ def _create_tool_registry(
             raise RuntimeError("No active page")
         ref = args.get("ref")
         selector = args.get("selector")
+
+        async def pick_visible(loc):
+            vp = page.viewport_size or {"width": 1920, "height": 1080}
+            count = await loc.count()
+            for i in range(min(count, 20)):
+                el = loc.nth(i)
+                try:
+                    if not await el.is_visible():
+                        continue
+                    box = await el.bounding_box()
+                except Exception:
+                    continue
+                if not box:
+                    continue
+                if box["x"] < 0 or box["y"] < 0:
+                    continue
+                if box["x"] >= vp["width"] or box["y"] >= vp["height"]:
+                    continue
+                if box["width"] < 4 or box["height"] < 4:
+                    continue
+                try:
+                    opacity = await el.evaluate(
+                        "e => parseFloat(getComputedStyle(e).opacity)"
+                    )
+                    if opacity < 0.1:
+                        continue
+                except Exception:
+                    pass
+                return el
+            return loc.first
+
         if ref:
             locator = await pm.locate_by_ref(ref, effective_session_id)
-            await locator.click(timeout=5000)
         elif selector:
-            await page.click(selector, timeout=5000)
+            locator = await pick_visible(page.locator(selector))
         else:
             raise ValueError("click requires either 'ref' or 'selector'")
+
+        try:
+            await locator.scroll_into_view_if_needed(timeout=3000)
+        except Exception:
+            pass
+        box = await locator.bounding_box()
+        if box and box["x"] >= 0 and box["y"] >= 0:
+            cx = box["x"] + box["width"] / 2
+            cy = box["y"] + box["height"] / 2
+            await page.mouse.move(cx, cy, steps=8)
+            await asyncio.sleep(0.05)
+            await page.mouse.click(cx, cy)
+        else:
+            await locator.click(timeout=5000)
         await asyncio.sleep(1)
         return ToolExecutionResult(output="Successfully clicked.")
 
