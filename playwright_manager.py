@@ -42,6 +42,12 @@ _INTERACTIVE_ROLES = {
     "gridcell",
 }
 
+_STEALTH_ARGS = ["--disable-blink-features=AutomationControlled"]
+_STEALTH_IGNORE_DEFAULT_ARGS = ["--enable-automation"]
+_STEALTH_INIT_SCRIPT = (
+    "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
+)
+
 
 class PlaywrightManager:
     def __init__(
@@ -94,6 +100,8 @@ class PlaywrightManager:
                 headless=False,
                 viewport={"width": 1280, "height": 800},
                 user_agent=_DEFAULT_USER_AGENT,
+                args=_STEALTH_ARGS,
+                ignore_default_args=_STEALTH_IGNORE_DEFAULT_ARGS,
             )
         else:
             self.context = await self.playwright.chromium.launch_persistent_context(
@@ -101,7 +109,13 @@ class PlaywrightManager:
                 headless=headless,
                 viewport={"width": 1280, "height": 800},
                 user_agent=_DEFAULT_USER_AGENT,
+                args=_STEALTH_ARGS,
+                ignore_default_args=_STEALTH_IGNORE_DEFAULT_ARGS,
             )
+        try:
+            await self.context.add_init_script(_STEALTH_INIT_SCRIPT)
+        except Exception:
+            pass
         self.tab_manager = TabManager(
             context=self.context,
             max_tabs=self.max_tabs,
@@ -372,7 +386,13 @@ class PlaywrightManager:
             headless=False,
             viewport={"width": 1280, "height": 800},
             user_agent=_DEFAULT_USER_AGENT,
+            args=_STEALTH_ARGS,
+            ignore_default_args=_STEALTH_IGNORE_DEFAULT_ARGS,
         )
+        try:
+            await self.context.add_init_script(_STEALTH_INIT_SCRIPT)
+        except Exception:
+            pass
 
         self.tab_manager = TabManager(
             context=self.context,
